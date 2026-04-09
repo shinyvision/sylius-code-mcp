@@ -56,7 +56,7 @@ chmod +x sylius-code-mcp_*
 ### Build from source
 
 ```sh
-git clone https://github.com/your-org/sylius-code-mcp
+git clone https://github.com/shinyvision/sylius-code-mcp
 cd sylius-code-mcp
 CGO_ENABLED=1 go build -o sylius-code-mcp .
 ```
