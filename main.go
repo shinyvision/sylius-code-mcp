@@ -18,6 +18,7 @@ import (
 	"github.com/sylius-code-mcp/internal/syliusresource"
 	"github.com/sylius-code-mcp/internal/syliusroute"
 	"github.com/sylius-code-mcp/internal/syliustranslations"
+	"github.com/sylius-code-mcp/internal/syliustwighooks"
 )
 
 func main() {
@@ -167,6 +168,41 @@ func main() {
 			"Use this before calling sylius_add_entity_fields to discover valid constraint names and their parameters.",
 		InputSchema: inputSchema8,
 	}, syliusconstraint.NewListConstraintsHandler(*projectRoot))
+
+	inputSchema10, err := jsonschema.For[syliustwighooks.ToolInput](nil)
+	if err != nil {
+		log.Fatalf("building input schema for sylius_get_twig_hooks: %v", err)
+	}
+
+	server.AddTool(&mcp.Tool{
+		Name: "sylius_get_twig_hooks",
+		Description: "Lists the Sylius TwigHooks hook tree for a given dot-separated `prefix` " +
+			"(e.g. 'sylius_admin.payment_method.update'). Reads the compiled Symfony container XML " +
+			"on every call and parses service IDs of the form `sylius_twig_hooks.hook.<HOOK>.hookable.<LEAF>` " +
+			"to reconstruct the nested hookable tree. Returns the subtree rooted at the prefix as a markdown " +
+			"bullet list. If the subtree contains more than 250 nodes, the tool refuses to render it and " +
+			"instead lists the direct children so the caller can supply a more specific prefix.",
+		InputSchema: inputSchema10,
+	}, syliustwighooks.NewHandler(*projectRoot))
+
+	inputSchema11, err := jsonschema.For[syliustwighooks.AddHookInput](nil)
+	if err != nil {
+		log.Fatalf("building input schema for sylius_add_twig_hook: %v", err)
+	}
+
+	server.AddTool(&mcp.Tool{
+		Name: "sylius_add_twig_hook",
+		Description: "Adds (or updates) a Sylius TwigHooks hookable in config/packages/twig_hooks/<categoryName>.yaml. " +
+			"Inputs: categoryName (snake_case file name), hookName (full dot-separated hook), hookable " +
+			"(object with name, template, optional priority, optional enabled). " +
+			"Creates the YAML file with the canonical sylius_twig_hooks.hooks structure if missing, " +
+			"otherwise loads it and inserts the hookable under the given hook key (creating the hook entry if needed). " +
+			"If a hookable with the same name already exists under that hook, it is replaced. " +
+			"After every write, the hooks mapping is sorted lexicographically so similar hook names group together " +
+			"(e.g. 'sylius_admin.payment_method.update.content.header' and " +
+			"'sylius_admin.payment_method.update.content.sections' end up adjacent).",
+		InputSchema: inputSchema11,
+	}, syliustwighooks.NewAddHookHandler(*projectRoot))
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
